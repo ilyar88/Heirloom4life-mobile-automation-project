@@ -37,7 +37,7 @@ public class UiActions {
     	//Hide text that equal to environment variable in the allure step
     	String shown = text;
     	for (String val : System.getenv().values()) {
-            if (text == val) {
+            if (text.equals(val)) {
             	shown = text.replace(val, "*".repeat(val.length())); break;
             }
         }
