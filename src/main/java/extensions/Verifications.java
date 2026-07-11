@@ -41,6 +41,7 @@ public class Verifications {
         Allure.step("Verify soft assert text: " + actual + " is in " + expected, () -> {
         	softAssert.assertTrue(actual.contains(expected),
                     "Verify text failed: '" + actual + "', does not contain: '" + expected + "'");
+        	softAssert.assertAll();
         });
     }
 }
