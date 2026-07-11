@@ -88,10 +88,12 @@ public class WaitForElement {
 	            .withTimeout(Duration.ofSeconds(delaySeconds + timeoutSeconds))
 	            .pollingEvery(Duration.ofSeconds(1));
 
+	        long startTime = System.currentTimeMillis();
+
 	        // Repeatedly evaluate this function until it returns a non-null WebElement
 	        return wait.until(d -> {
 	            // Calculate how many seconds have elapsed since we started waiting
-	            long elapsed = (System.currentTimeMillis() - delaySeconds) / 1000;
+	            long elapsed = (System.currentTimeMillis() - startTime) / 1000;
 
 	            if (elapsed < delaySeconds) {
 	                return null; // If still in "delay" phase return null
