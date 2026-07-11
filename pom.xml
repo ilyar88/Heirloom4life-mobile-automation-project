@@ -14,6 +14,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
+    <suiteXmlFiles>Suites/Sanity.xml,Suites/Validation.xml,Suites/Load.xml</suiteXmlFiles>
   </properties>
 
   <dependencies>
@@ -71,11 +73,7 @@
         <version>3.5.3</version>
         <configuration>
           <testFailureIgnore>true</testFailureIgnore>
-          <suiteXmlFiles>
-            <suiteXmlFile>Suites/Sanity.xml</suiteXmlFile>
-            <suiteXmlFile>Suites/Validation.xml</suiteXmlFile> 
-            <suiteXmlFile>Suites/Load.xml</suiteXmlFile>
-          </suiteXmlFiles>
+          <suiteXmlFiles>${suiteXmlFiles}</suiteXmlFiles>
           <systemPropertyVariables>
             <browser>${browser}</browser>
           </systemPropertyVariables>
