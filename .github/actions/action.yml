@@ -1,0 +1,19 @@
+name: Test Summary
+description: Run test results (passed, failed, skipped, ignored)
+
+inputs:
+  label:
+    description: "Suite label used to locate the surefire HTML report (e.g. Sanity, Validation, Load)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Add executable permission to the script
+      run: chmod +x ./src/main/java/scripts/summarize-test.sh 
+      shell: bash
+
+    - name: Output test results (Surefire report)
+      if: always()
+      run: ./src/main/java/scripts/summarize-test.sh ${{ inputs.label }}
+      shell: bash
