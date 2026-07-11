@@ -44,8 +44,6 @@ public class LoadTestFlow {
 	                    .exec(new ResultCallback.Adapter<WaitResponse>() {})
 	                    .awaitCompletion();
 	
-	            System.in.read();
-	
 	            // Pass k6 log output to the report helper
 	            K6ReportHelper.generateHtmlFromString(output.toString());
 	
