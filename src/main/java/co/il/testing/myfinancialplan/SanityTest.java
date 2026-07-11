@@ -29,7 +29,7 @@ public class SanityTest extends BasePage {
 	@Test(priority = 1, description = "User login to website")
 	public void userLoginTest() {
 		LoginFlow.userLogin(prop.getProperty("username"),prop.getProperty("password"), "/auth/verify");	
-		OtpFlow.typePassword("","/home"); //Verify redirection from the OTP page to the introduction page.
+		OtpFlow.typePassword("","/home"); //Verify redirection from the OTP page to the home page.
 	}
 	
 	@Feature("Profile")
