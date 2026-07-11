@@ -1,14 +1,72 @@
-# MyFinancialPlan Selenium project
+# MyFinancialPlan - E2E test automation
+
+End-to-end test automation suite for the MyFinancialPlan web application, built with **Selenium**, **TestNG**, **Allure** reporting, run via **GitHub Actions**.
 
 ## About
 
 MyFinancePlan is a SaaS website for creating and tracking personal financial plans. It allows users to build and manage their own plans by tracking income and expenses, view other users’ plans (if sharing access is enabled), access median financial data based on their status for comparison, and receive actionable steps alerts to help implement and monitor plans according to their path to the goals and dreams.
 
+---
+
+## Project structure
+
+```
+MyFinancialPlan-project/
+├── src/main/java/
+│   ├── base/
+│   │   └── BasePage.java            # Browser lifecycle: loads config, creates WebDriver (chrome/firefox/edge), navigation & teardown
+│   ├── co/il/testing/myfinancialplan/
+│   │   ├── SanityTest.java          # Main sanity E2E suite
+│   │   ├── ValidationTest.java      # Data-driven validation suite
+│   │   └── LoadTest.java            # Load test entry point (delegates to LoadTestFlow)
+│   ├── configuration/
+│   │   └── config.properties        # URL, browser, credentials, wait time (env-var driven)
+│   ├── extensions/                  # Reusable test utilities
+│   │   ├── UiActions.java           # UI interactions (click, type, select, upload, etc.)
+│   │   └── Verifications.java       # Assertion helpers with Allure steps
+│   ├── pageObjects/                 # Page Object Model (POM), one class per page (Login, Register, MyPlan, etc.)
+│   ├── workflows/                   # Multi-step user flows composed from page objects
+│   ├── scripts/
+│   │   └── summarize-test.sh        # Parses the Surefire XML report and prints pass/fail/skip counts in CI
+│   └── utilities/                   # Wait conditions, data providers, page registry & failure listener
+│       ├── WaitForElement.java      # Wait conditions & synchronization
+│       ├── ManagePages.java         # Initializes and exposes all page objects
+│       ├── Listeners.java           # Screenshot on failure & test lifecycle logging
+│       ├── DataUtil.java            # Excel parser utility
+│       ├── TestData.java            # TestNG @DataProvider backed by TestData.xlsx
+│       └── K6ReportHelper.java      # Runs the k6 container and parses its results
+├── src/test/resources/
+│   ├── TestData.xlsx                # Data-driven test data
+│   └── load-test.js                 # k6 load test script: virtual users, duration & status-code check
+├── Suites/                          # TestNG suite XML files
+│   ├── Sanity.xml
+│   ├── Validation.xml
+│   └── Load.xml
+├── .github/
+│   ├── actions/
+│   │   └── action.yml               # Composite action: runs summarize-test.sh and prints the suite's test summary
+│   └── workflows/
+│       └── E2E test.yml             # GitHub Actions CI: Sanity → Validation → Load, per-browser dispatch
+├── pom.xml                          # Maven config: dependencies, Surefire suite selection, Allure report plugin
+└── architecture.svg                 # Project architecture diagram
+```
+
+---
+
+## Architecture
+
+![Architecture Diagram](architecture.svg)
+
+| Layer | Purpose |
+|-------|---------|
+| **Test classes** (`co.il.testing.myfinancialplan`) | TestNG test specs that define test cases (Sanity, Validation, Load) |
+| **Workflows** | Multi-step user flows (login, register, add incomes/expenses, choose path, etc.) |
+| **Page Objects** | Encapsulate UI element locators per page |
+| **Extensions** | Reusable utilities: UI actions and Allure-backed verifications |
+| **Utilities** | Wait conditions, Excel-driven data provider, page registry, failure listener, k6 report helper |
+| **Base** | `BasePage` loads config, launches/tears down the WebDriver (Chrome/Firefox/Edge) and takes failure screenshots |
+
 ## Project Overview
-
-![Architecture Diagram](Architecture.png)
-
-
 
 | Features                      | Description                    |
 |-------------------------------------|--------------------------|
@@ -22,6 +80,37 @@ MyFinancePlan is a SaaS website for creating and tracking personal financial pla
 | Clearing page                       | Includes the following:<br>1. Choosing a provider<br>2. Payment details<br>3. Purchase button redirects to the home page                                 |
 | View/Edit Financial Plan Page       | Includes the following:<br>1. expenses and incomes<br>2. Financial goals<br>3. Emergency  Fund                                  |
 | Profile page                        | Includes the following:<br>1. First name<br>2. Last name<br>3. Email<br>4. Cell phone<br>5. Age<br>6. Marital status<br>7. Number of children                 |
+
+---
+
+## Setup
+
+### Prerequisites
+- Java 17
+- Maven
+- Chrome/Firefox/Edge browser
+
+### Install
+```bash
+mvn clean install -DskipTests
+```
+
+---
+
+## Running tests
+
+```bash
+# Sanity suite on Chrome
+mvn clean -Dbrowser=chrome -DsuiteXmlFiles=Suites/Sanity.xml test allure:report
+
+# Validation suite
+mvn clean -Dbrowser=chrome -DsuiteXmlFiles=Suites/Validation.xml test allure:report
+
+# Load suite
+mvn clean -Dbrowser=chrome -DsuiteXmlFiles=Suites/Load.xml test allure:report
+```
+
+`browser` accepts `chrome`, `firefox` or `edge`. The Allure report is generated under `target/site/allure-maven-plugin`.
 
 ## Sanity test
 
@@ -43,6 +132,8 @@ MyFinancePlan is a SaaS website for creating and tracking personal financial pla
 
 ## Validation test
 
+Test data is driven from `src/test/resources/TestData.xlsx`, parsed by `DataUtil` and served via the `globalProvider` `@DataProvider` in `TestData.java`.
+
 | Test cases                           | Description              |
 |--------------------------------------|--------------------------|
 | Reset password page                  | Execute reset password with different data |
@@ -52,9 +143,37 @@ MyFinancePlan is a SaaS website for creating and tracking personal financial pla
 
 ## Load test
 
+Load testing runs a Grafana k6 container via `K6ReportHelper` against `src/test/resources/load-test.js`.
+
 | Test cases                           | Description              |
 |--------------------------------------|--------------------------|
 | Load test                            | Execute a load test with 10 virtual users and verify that the requests return a 200 status code                                   |
+
+---
+
+## Reporting
+
+### Allure report
+- Every UI action is logged as an **Allure step**
+- Tests are tagged with **Allure severity** and **description**
+- **Screenshots** are automatically captured and attached on failure (via `Listeners`)
+
+---
+
+## CI/CD - GitHub Actions
+
+The workflow (`.github/workflows/E2E test.yml`) runs via **manual dispatch** with browser selection:
+
+**Trigger:** GitHub Actions > Run workflow > Select browser (chrome/edge/firefox)
+
+**Pipeline:**
+1. **Sanity** — checkout, setup Java 17, run `Suites/Sanity.xml`, generate Allure report, print test summary, upload report artifact
+2. **Validation** — same steps, runs `Suites/Validation.xml` after Sanity passes
+3. **Load** — sets up Docker, runs `Suites/Load.xml` (k6 load test) after Validation passes, uploads the k6 HTML report
+
+Each job's pass/fail/skip counts are printed via `.github/actions/action.yml`, which runs `src/main/java/scripts/summarize-test.sh` against the Surefire XML report.
+
+---
 
 ## Infrastructure Highlights
 
@@ -67,7 +186,16 @@ MyFinancePlan is a SaaS website for creating and tracking personal financial pla
 - **Reporting System** (include screenshots)
 - **CI Support**
 
-## Tools & Frameworks
-- **Listeners** - used to generate Allure report with feature, severity, description, steps and for failure Mechanism
-- **Allure Reports** - main reporting system
-- **Grafana k6** - used for load testing when executed from a container
+## Tech stack
+
+| Tool | Purpose |
+|------|---------|
+| [Selenium](https://www.selenium.dev/) | Browser automation |
+| [TestNG](https://testng.org/) | Test runner & data providers |
+| [Allure](https://allurereport.org/) | Test reporting |
+| [Apache POI](https://poi.apache.org/) | Excel data parsing |
+| [WebDriverManager](https://bonigarcia.dev/webdrivermanager/) | Automatic browser driver management |
+| [Testcontainers k6 module](https://testcontainers.com/) | Runs Grafana k6 load tests in a container |
+| [Angus Mail](https://eclipse-ee4j.github.io/angus-mail/) | Reads OTP emails via IMAP |
+| [Maven](https://maven.apache.org/) | Build tool |
+| [GitHub Actions](https://github.com/features/actions) | CI/CD pipeline |
