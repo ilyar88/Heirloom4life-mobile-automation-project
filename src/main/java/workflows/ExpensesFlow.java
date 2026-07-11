@@ -9,44 +9,41 @@ import static utilities.ManagePages.page;
 
 public class ExpensesFlow {
 
-    // Index mapping: 0:totalExpense(Float), 1:nextTab(Integer), 2:currentCategory(String), 3:newTab(Boolean)
-    private static final ThreadLocal<Object[]> state = ThreadLocal.withInitial(() -> new Object[]{0f, 0, "", true});
-
-    public static Object[] states(Float f, Integer i, String s, Boolean b) {
-        Object[] st = state.get();
-        if (f != null) st[0] = f;
-        if (i != null) st[1] = i;
-        if (s != null) st[2] = s;
-        if (b != null) st[3] = b;
-        return st;
+    // Per-thread state accumulated while addExpenses() walks through one category's rows
+    private static class ExpenseState {
+        float totalExpense = 0f;
+        int tabIndex = 0;
+        String category = "";
+        boolean newTab = true;
     }
+
+    private static final ThreadLocal<ExpenseState> state = ThreadLocal.withInitial(ExpenseState::new);
 
     public static void addExpenses(String category, String[] names, String[] amounts) {
         Allure.step("Add expenses flow", () -> {
+            ExpenseState st = state.get();
+            st.category = category;
+
             for (int i = 0; i < names.length; i++) {
-                Object[] st = states(null, null, category, null);               
-                // Navigate to next pages                
-                if (names[i].equals("nextButton")) { 
+                // Navigate to next pages
+                if (names[i].equals("nextButton")) {
                     UiActions.click(page(IncomesPage.class).nextButton());
                     WaitForElement.waitUntilUrlContains("/FinancialPlanMaker/emergencyFund");
                     continue;
                 }
-                // Update the category name
-                if (!st[2].equals(category)) {
-                    states(null, null, category, null);
-                }
                 // Switch to next tab
                 if (names[i].equals("nextTab")) {
-                    states(null, (Integer) st[1] + 1, null, true);
-                    var tab = page(PeriodExpensesPage.class).buttonsTab().get((Integer) st[1]);
+                    st.tabIndex++;
+                    st.newTab = true;
+                    var tab = page(PeriodExpensesPage.class).buttonsTab().get(st.tabIndex);
                     WaitForElement.waitFor(tab, "ELEMENT_CLICKABLE", 10);
                     UiActions.moveToElement(tab, 200);
                     UiActions.click(tab);
                     continue;
                 }
                 // At first a large button appears in a new tab; afterward an icon button appears
-                if ((Boolean) st[3]) { 
-                    states(null, null, null, false);
+                if (st.newTab) {
+                    st.newTab = false;
                     UiActions.click(page(IncomesPage.class).addIncomeOrExpense());
                 } else {
                     try {
@@ -57,12 +54,12 @@ public class ExpensesFlow {
                 }
                 //Add the category details include name and amount.
                 UiActions.click(page(PeriodExpensesPage.class).category());
-                UiActions.click(page(PeriodExpensesPage.class).listOfValues((String) st[2]));
+                UiActions.click(page(PeriodExpensesPage.class).listOfValues(st.category));
                 UiActions.enterText(page(IncomesPage.class).name(), names[i]);
                 UiActions.enterText(page(IncomesPage.class).amount(), amounts[i]);
                 UiActions.click(page(IncomesPage.class).add());
 
-                states((Float) st[0] + Float.parseFloat(amounts[i]), null, null, null);
+                st.totalExpense += Float.parseFloat(amounts[i]);
             }
         });
     }
@@ -81,8 +78,8 @@ public class ExpensesFlow {
             String monthlySavings = UiActions.getText(page(EmergencyFundPage.class).monthlySavings());
             int actualAmount = (Integer.parseInt(amount) - Integer.parseInt(currentAmount)) / Integer.parseInt(month);
             
-            if (Integer.parseInt(monthlySavings) > actualAmount - 10) {
-                int offset = Integer.parseInt(monthlySavings) - actualAmount;
+            int offset = Integer.parseInt(monthlySavings) - actualAmount;
+            if (Math.abs(offset) <= 10) {
                 actualAmount += offset;
             }
             Verifications.verifyText(String.valueOf(actualAmount), monthlySavings);
@@ -137,7 +134,7 @@ public class ExpensesFlow {
                 };
             
                 UiActions.click(page(RecurringExpensesPage.class).riskOptions().get(index));
-                UiActions.click(testcaseName == "recurring expenses" ? page(IncomesPage.class).add() : page(FinancialGoalsPage.class).add());
+                UiActions.click(testcaseName.equals("recurring expenses") ? page(IncomesPage.class).add() : page(FinancialGoalsPage.class).add());
                 
                 String text = UiActions.getText(page(RecurringExpensesPage.class).monthlyPayment());
                 String months = text.replaceAll("\\D+", "");
@@ -154,6 +151,6 @@ public class ExpensesFlow {
     }
     
     public static float getTotalExpense() {
-        return (Float) state.get()[0];
+        return state.get().totalExpense;
     }
 }
