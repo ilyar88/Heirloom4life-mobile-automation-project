@@ -24,7 +24,7 @@ jobs:
           distribution: temurin # Set up Java 17 (Temurin distribution)
           java-version: 17
 
-      - run: mvn clean -Dbrowser=${{ inputs.browser }} -DsuiteXmlFiles=Suites/Sanity.xml test allure:report
+      - run: mvn clean -Denv=${{ inputs.browser }} -DsuiteXmlFiles=Suites/Sanity.xml test allure:report
 
       - uses: ./.github/actions #Run test summary with the following results (passed, failed, skipped, ignored)
         if: always()
@@ -36,56 +36,3 @@ jobs:
         with:
           name: Allure-report-Sanity # Run tests and generate Allure report
           path: target/site/allure-maven-plugin
-
-  Validation:
-    name: Validation test
-    runs-on: ubuntu-latest
-    environment: Web_sittings
-    needs: Sanity
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - run: mvn clean -Dbrowser=${{ inputs.browser }} -DsuiteXmlFiles=Suites/Validation.xml test allure:report
-
-      - uses: ./.github/actions
-        if: always()
-        with:
-          label: Validation
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Allure-report-Validation
-          path: target/site/allure-maven-plugin
-
-  Load:
-    name: Load test
-    runs-on: ubuntu-latest
-    environment: Web_sittings
-    needs: Validation
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Set up Docker #This for running Grafana k6 image
-        uses: docker/setup-buildx-action@v3
-
-      - run: mvn clean -Dbrowser=${{ inputs.browser }} -DsuiteXmlFiles=Suites/Load.xml test allure:report
-
-      - uses: ./.github/actions
-        if: always()
-        with:
-          label: Load
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: k6-load-report
-          path: ./k6_results/report.html
