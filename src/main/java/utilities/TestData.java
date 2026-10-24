@@ -10,7 +10,7 @@ public class TestData {
     @DataProvider(name = "globalProvider")
     public static Object[][] data(Method method) {
         try {
-        	String path = Paths.get("src", "test", "resources", "TestData.xlsx").toString();
+        	String path = Paths.get("src", "test", "resources", "testData.json").toString();
         	return DataUtil.getTestData(path, method.getName());      	
             
         } catch (Exception e) {

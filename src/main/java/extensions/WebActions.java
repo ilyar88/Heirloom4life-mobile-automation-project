@@ -3,16 +3,18 @@ package extensions;
 import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.Select;
 import io.qameta.allure.Allure;
+import utilities.DataUtil;
 
-public class UiActions {
+public class WebActions {
 	
-	private static WebDriver _driver;
+	protected static WebDriver _driver;
 	
 	public static void init(WebDriver driver) {
 		_driver = driver;
@@ -34,13 +36,11 @@ public class UiActions {
 	}
 
     public static void enterText(WebElement elem, String text) {
-    	//Hide text that equal to environment variable in the allure step
+    	//Hide text that equals a configured secret (OS env var or .env file value) in the Allure step
     	String shown = text;
-    	for (String val : System.getenv().values()) {
-            if (text.equals(val)) {
-            	shown = text.replace(val, "*".repeat(val.length())); break;
-            }
-        }
+    	boolean isSecret = Stream.concat(System.getenv().values().stream(), DataUtil.dotEnvValues().stream())
+    			.anyMatch(val -> text.equals(String.valueOf(val)));
+    	if (isSecret) shown = "*".repeat(text.length());
 
         Allure.step("Enter text (" + elementName(elem) + "): " + shown, () -> {
         	try {

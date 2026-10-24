@@ -3,7 +3,7 @@
 <suite name="Sanity" parallel="false">
   <test name="SanityTest">
     <classes>
-      <class name="co.il.testing.myfinancialplan.SanityTest"/>
+      <class name="com.heirloom4life.SanityTest"/>
     </classes>
   </test>
 </suite>

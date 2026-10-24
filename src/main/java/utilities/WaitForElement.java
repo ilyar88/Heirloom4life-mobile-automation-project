@@ -1,7 +1,9 @@
 package utilities;
 
-import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -22,10 +24,10 @@ public class WaitForElement {
 	
 	public static void waitFor(WebElement elem, String forElement, int seconds) {
 	    // Temporarily disable implicit wait to avoid it compounding with explicit wait
-	    _driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+	    _driver.manage().timeouts().implicitlyWait(0, TimeUnit.SECONDS);
 
 	    try {
-	        WebDriverWait wait = new WebDriverWait(_driver, Duration.ofSeconds(seconds));
+	        WebDriverWait wait = new WebDriverWait(_driver, seconds);
 	        switch (For.parse(forElement)) {
 	            case ELEMENT_EXISTS:
 	                wait.until(d -> elem.isEnabled());
@@ -43,71 +45,105 @@ public class WaitForElement {
 	                throw new IllegalArgumentException("Unsupported wait condition: " + forElement);
 	        }
 	    } finally { // Always restore the previously configured implicit wait
-	        _driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(_seconds));
+	        _driver.manage().timeouts().implicitlyWait(_seconds, TimeUnit.SECONDS);
 	    }
 	}
-	
+
+	// Same as waitFor(WebElement, ...) but re-locates by the locator on every poll, so it also
+	// works for an element that doesn't exist in the DOM yet (not just one that exists but isn't
+	// visible/clickable yet).
+	public static void waitFor(By locator, String forElement, int seconds) {
+	    _driver.manage().timeouts().implicitlyWait(0, TimeUnit.SECONDS);
+
+	    try {
+	        WebDriverWait wait = new WebDriverWait(_driver, seconds);
+	        switch (For.parse(forElement)) {
+	            case ELEMENT_EXISTS:
+	                wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+	                break;
+	            case ELEMENT_DISPLAYED:
+	                wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+	                break;
+	            case ELEMENT_INVISIBLE:
+	                wait.until(ExpectedConditions.invisibilityOfElementLocated(locator));
+	                break;
+	            case ELEMENT_CLICKABLE:
+	                wait.until(ExpectedConditions.elementToBeClickable(locator));
+	                break;
+	            default:
+	                throw new IllegalArgumentException("Unsupported wait condition: " + forElement);
+	        }
+	    } finally {
+	        _driver.manage().timeouts().implicitlyWait(_seconds, TimeUnit.SECONDS);
+	    }
+	}
+
+	// Same as waitFor(WebElement, ...) but takes a Supplier (e.g. () -> login.googleLink()) so the
+	// element lookup itself is deferred and retried on every poll, instead of being resolved once
+	// eagerly before the wait even starts. Returns the resolved element so callers don't have to
+	// look it up a second time (e.g. for the click that follows).
+	public static WebElement waitFor(Supplier<WebElement> elementSupplier, String forElement, int seconds) {
+	    _driver.manage().timeouts().implicitlyWait(0, TimeUnit.SECONDS);
+
+	    try {
+	        WebDriverWait wait = new WebDriverWait(_driver, seconds);
+	        switch (For.parse(forElement)) {
+	            case ELEMENT_EXISTS:
+	            case ELEMENT_CLICKABLE:
+	                return wait.until(d -> {
+	                    WebElement e = elementSupplier.get();
+	                    return e.isEnabled() ? e : null;
+	                });
+	            case ELEMENT_DISPLAYED:
+	                return wait.until(d -> {
+	                    WebElement e = elementSupplier.get();
+	                    return e.isDisplayed() ? e : null;
+	                });
+	            case ELEMENT_INVISIBLE:
+	                wait.until(d -> {
+	                    try {
+	                        return !elementSupplier.get().isDisplayed();
+	                    } catch (org.openqa.selenium.NoSuchElementException ex) {
+	                        return true;
+	                    }
+	                });
+	                return null;
+	            default:
+	                throw new IllegalArgumentException("Unsupported wait condition: " + forElement);
+	        }
+	    } finally {
+	        _driver.manage().timeouts().implicitlyWait(_seconds, TimeUnit.SECONDS);
+	    }
+	}
+
 	public static void waitForListSize(List<WebElement> elements, int size, int seconds) {
 		try {
-			WebDriverWait wait = new WebDriverWait(_driver, Duration.ofSeconds(seconds));
+			WebDriverWait wait = new WebDriverWait(_driver, seconds);
 			wait.until(d -> elements.size() >= size);
 		}
 		catch (Exception e) {
 	        Verifications.assertFailed("Expected list size >= " + size + " but found " + elements.size());
-	        
+
 		} finally {
-			_driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(_seconds));
+			_driver.manage().timeouts().implicitlyWait(_seconds, TimeUnit.SECONDS);
 		}
 	}
-	
+
 	public static void waitUntilUrlContains(String uri) {
 		Allure.step("Wait for uri: " + uri, () -> {
-			
-			_driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+
+			_driver.manage().timeouts().implicitlyWait(0, TimeUnit.SECONDS);
 			try { // Wait up to 5 seconds until the browser URL contains the expected substring
-			    new WebDriverWait(_driver, Duration.ofSeconds(5)).until(ExpectedConditions.urlContains(uri));
+			    new WebDriverWait(_driver, 5).until(ExpectedConditions.urlContains(uri));
 			} catch (Exception e) { // If timeout or failure: get the current actual URL
 			    String actual = _driver.getCurrentUrl();
 			    Verifications.verifyText(actual, uri);
 			} finally {
-				_driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(_seconds));
+				_driver.manage().timeouts().implicitlyWait(_seconds, TimeUnit.SECONDS);
 			}
 		});
 	}
 
-	
-	public static WebElement delayWait(WebElement element, int delaySeconds, int timeoutSeconds) {
-	    try {
-	    	// Temporarily disable implicit wait to avoid it compounding with explicit wait
-	        _driver.manage().timeouts().implicitlyWait(Duration.ZERO);
-
-	        // Build a FluentWait on the driver:
-	        // - total timeout = delay + real timeout
-	        // - poll every 1 second
-	        FluentWait<WebDriver> wait = new FluentWait<>(_driver)
-	            .withTimeout(Duration.ofSeconds(delaySeconds + timeoutSeconds))
-	            .pollingEvery(Duration.ofSeconds(1));
-
-	        long startTime = System.currentTimeMillis();
-
-	        // Repeatedly evaluate this function until it returns a non-null WebElement
-	        return wait.until(d -> {
-	            // Calculate how many seconds have elapsed since we started waiting
-	            long elapsed = (System.currentTimeMillis() - startTime) / 1000;
-
-	            if (elapsed < delaySeconds) {
-	                return null; // If still in "delay" phase return null
-	            }
-
-	            // After delay passes: return the element if it’s visible; otherwise keep polling
-	            return element.isDisplayed() ? element : null;
-	        });
-
-	    } finally {
-	        // Restore the original implicit wait for the driver
-	        _driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(_seconds));
-	    }
-	}
 	//Wait for specific time
 	public static void waitForTime(String timeText) {
 	    String[] parts = timeText.split(" ");

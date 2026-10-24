@@ -1,38 +1,37 @@
 package pageObjects;
 
-import org.openqa.selenium.By;
+import io.appium.java_client.MobileBy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
 public class LoginPage {
-	
-	private  WebDriver _driver;
-	
+
+	private WebDriver _driver;
+
 	public LoginPage(WebDriver driver) {
 		_driver = driver;
     }
-	
-    public WebElement createAccountLink() {
-        return _driver.findElement(By.cssSelector("a[href='/auth/register']"));
-    }
-    //Email address textbox
-    public WebElement emailAddress() {
-        return _driver.findElement(By.cssSelector("input[name='email']"));
-    }
-    //Password textbox
-    public WebElement password() {
-        return _driver.findElement(By.cssSelector("input[name='password']"));
-    }
-    
-    public WebElement login() {
-        return _driver.findElement(By.cssSelector("button[type='submit']"));
+
+    public WebElement title() {
+        return _driver.findElement(MobileBy.AndroidUIAutomator("new UiSelector().text(\"Heirloom\")"));
     }
 
-    public WebElement fastLogin() {
-        return _driver.findElement(By.cssSelector("button#\\:rv\\:"));
+    public WebElement googleLink() {
+        return _driver.findElement(MobileBy.AccessibilityId("Continue with Google"));
     }
-    
-    public WebElement resetPassword() {
-        return _driver.findElement(By.cssSelector("a[href='/auth/reset-password']"));
+    //Landing screen link that opens the email/password sign-in form
+    public WebElement signInLink() {
+        return _driver.findElement(MobileBy.AccessibilityId("Already have an account? Sign In"));
+    }
+    //Landing screen link that opens the email/password sign-in form
+    public WebElement emailLink() {
+        return _driver.findElement(MobileBy.AccessibilityId("Continue with Email"));
+    }
+
+    // Google's account-picker dialog (com.google.android.gms) has no accessibility id on this
+    // row, only a plain "text" value equal to the account's email.
+    public WebElement chooseAccount(String accountName) {
+        return _driver.findElement(MobileBy.AndroidUIAutomator(
+                "new UiSelector().text(\"" + accountName + "\")"));
     }
 }

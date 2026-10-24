@@ -21,7 +21,6 @@ public class Verifications {
         });
     }
 
-
     public static void assertFailed(String message) {
         Allure.step("Assert failed", () -> {
             Assert.fail(message);
@@ -29,10 +28,10 @@ public class Verifications {
     }
 
     public static void isDisplayed(WebElement elem, boolean expected) {
-        Allure.step("Verify element display: " + UiActions.elementName(elem), () -> {
+        Allure.step("Verify element display: " + WebActions.elementName(elem), () -> {
             boolean actual = elem != null && elem.isDisplayed();
             Assert.assertEquals(actual, expected,
-                    "Verify display failed for element: " + UiActions.elementName(elem));
+                    "Verify display failed for element: " + WebActions.elementName(elem));
         });
     }
 

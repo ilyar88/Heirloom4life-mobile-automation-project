@@ -1,26 +1,29 @@
 package workflows;
 
-import extensions.UiActions;
-import utilities.WaitForElement;
+import base.BasePage;
+import extensions.MobileActions;
+import extensions.Verifications;
 import io.qameta.allure.Allure;
+import org.openqa.selenium.WebElement;
 import pageObjects.LoginPage;
-import static utilities.ManagePages.*;
+import pageObjects.StoriesPage;
+import utilities.WaitForElement;
 
 public class LoginFlow {
 
-    public static void userLogin(String email, String password, String uri) {
-    	
-		Allure.step("User login flow", () -> {
-			
-			UiActions.enterText(page(LoginPage.class).emailAddress(), email);
-	        UiActions.enterText(page(LoginPage.class).password(), password);
-	        UiActions.click(page(LoginPage.class).login());
-	        WaitForElement.waitUntilUrlContains(uri);
-	        goBack();
-		});
-    }
+    public static void userLogin(String email) {
 
-    public static void userLogin_TDD(String email, String password, String uri) {
-    	userLogin(email, password, uri);
+		Allure.step("User login flow", () -> {
+
+			LoginPage login = new LoginPage(BasePage.driver);
+			StoriesPage stories = new StoriesPage(BasePage.driver);
+			// Cold app launch on device can take longer than the default 20s wait
+			WebElement googleLink = WaitForElement.waitFor(() -> login.googleLink(), "element displayed", 40);
+			MobileActions.click(googleLink);
+			WebElement account = WaitForElement.waitFor(() -> login.chooseAccount(email), "element displayed", 40);
+			MobileActions.click(account);
+			WebElement title = WaitForElement.waitFor(() -> stories.title(), "element displayed", 40);
+			Verifications.verifyText(MobileActions.getText(title), "Stories");
+		});
     }
 }
