@@ -1,27 +1,32 @@
 package workflows;
 
-import base.BasePage;
-import extensions.MobileActions;
-import extensions.Verifications;
+import extensions.*;
 import io.qameta.allure.Allure;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import pageObjects.*;
 import utilities.WaitForElement;
 
 public class SignOutFlow {
 
-    public static void SignOutFlow() {
+    private final NavigationPage navigation;
+    private final AccountPage account;
+    private final LoginPage login;
+
+    public SignOutFlow(WebDriver driver) {
+        navigation = new NavigationPage(driver);
+        account = new AccountPage(driver);
+        login = new LoginPage(driver);
+    }
+
+    public void SignOutFlow() {
 
 		Allure.step("Sign out flow", () -> {
 
-            NavigationPage navigation = new NavigationPage(BasePage.driver);
-            AccountPage account = new AccountPage(BasePage.driver);
-            LoginPage login = new LoginPage(BasePage.driver);
             WebElement accountTab = WaitForElement.waitFor(() -> navigation.navigationBar("Account"), "element displayed", 40);
             MobileActions.click(accountTab);
-            MobileActions.scrollDown(() -> account.signOut());
-            MobileActions.click(account.signOut());
-            WebElement signOutConfirm = WaitForElement.waitFor(() -> account.signOutButton(), "element displayed", 40);
+            MobileActions.scrollDown(() -> account.byName("Sign Out"));
+            MobileActions.click(account.byName("Sign Out"));
+            WebElement signOutConfirm = WaitForElement.waitFor(() -> account.byName("Sign Out"), "element displayed", 40);
             MobileActions.click(signOutConfirm);
             String title = MobileActions.getText(login.title());
             Verifications.verifyText(title, title.contains("Sam") ? "Sam" : "Heirloom");
