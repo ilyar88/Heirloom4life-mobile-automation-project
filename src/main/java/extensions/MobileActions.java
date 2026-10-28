@@ -2,36 +2,27 @@ package extensions;
 
 import java.time.Duration;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.FluentWait;
+import io.appium.java_client.*;
+import io.appium.java_client.touch.WaitOptions;
+import io.appium.java_client.touch.offset.PointOption;
 import io.qameta.allure.Allure;
 
 public class MobileActions extends WebActions {
 
     private static final int MAX_SCROLL_SECONDS = 30;
-    private static String _adbPath;
-    private static String _udid;
-
-    public static void init(String adbPath, String udid) {
-        _adbPath = adbPath;
-        _udid = udid;
-    }
-
+    private static final int SWIPE_MS = 300;
+    private static final int ZOOM_MIN_GAP = 20;
+    private static final int ZOOM_MAX_GAP = 200;
     // Scroll down until the target is visible (e.g. () -> navigation.navigationBar("Account")),
     // giving up after MAX_SCROLL_SECONDS so it can't hang forever if the target never appears.
-    // Shells out to adb directly: this Appium server doesn't relay a drag/swipe gesture to the
-    // device via either the W3C Actions API or the legacy TouchAction API (confirmed on-device:
-    // a raw "adb shell input swipe" scrolls fine, but the identical gesture through Appium does nothing).
     public static void scrollDown(Supplier<WebElement> target) {
         Allure.step("Scroll down", () -> {
-            int[] size = screenSize();
-            int x = size[0] / 2;
-            int startY = (int) (size[1] * 0.8);
-            int endY = (int) (size[1] * 0.2);
+            Dimension size = _driver.manage().window().getSize();
+            int x = size.getWidth() / 2;
+            int startY = (int) (size.getHeight() * 0.8);
+            int endY = (int) (size.getHeight() * 0.2);
 
             FluentWait<WebDriver> wait = new FluentWait<>(_driver)
                     .withTimeout(Duration.ofSeconds(MAX_SCROLL_SECONDS))
@@ -49,11 +40,9 @@ public class MobileActions extends WebActions {
                     }
 
                     try {
-                        new ProcessBuilder(_adbPath, "-s", _udid, "shell", "input", "swipe",
-                                String.valueOf(x), String.valueOf(startY), String.valueOf(x), String.valueOf(endY), "300")
-                                .start().waitFor();
+                        swipe(x, startY, x, endY, SWIPE_MS);
                     } catch (Exception ignored) {
-                        // this swipe attempt failed to launch; keep polling
+                        // this swipe attempt failed; keep polling
                     }
                     return false;
                 });
@@ -62,24 +51,52 @@ public class MobileActions extends WebActions {
             }
         });
     }
+    // Swipe "right" (finger moves left to right) or "left" along the vertical center of the screen,
+    // using the same 80% / 20% distances as scrollDown.
+    private static void swipe(String direction) {
+        Allure.step("Swipe " + direction, () -> {
+            Dimension size = _driver.manage().window().getSize();
+            int y = size.getHeight() / 2;
+            int fromX = (int) (size.getWidth() * 0.8);
+            int toX = (int) (size.getWidth() * 0.2);
 
-    // Real device pixel dimensions via adb, since Appium's driver.manage().window().getSize()
-    // isn't guaranteed to be in the same coordinate space "adb shell input swipe" expects.
-    private static int[] screenSize() {
-        try {
-            Process process = new ProcessBuilder(_adbPath, "-s", _udid, "shell", "wm", "size")
-                    .redirectErrorStream(true).start();
-            String output = new String(process.getInputStream().readAllBytes());
-            process.waitFor();
-
-            Matcher m = Pattern.compile("(\\d+)x(\\d+)").matcher(output);
-            if (m.find()) {
-                return new int[]{Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))};
+            switch (direction.toLowerCase()) {
+                case "right":
+                    swipe(toX, y, fromX, y, SWIPE_MS);
+                    break;
+                case "left":
+                    swipe(fromX, y, toX, y, SWIPE_MS);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Swipe direction must be right or left: " + direction);
             }
-        } catch (Exception ignored) {
-            // fall back below
-        }
-        org.openqa.selenium.Dimension size = _driver.manage().window().getSize();
-        return new int[]{size.getWidth(), size.getHeight()};
+        });
+    }
+    // Zoom in (true) or out (false) on the center of the element: two fingers, one above and one below the
+    // center, move apart or toward each other.
+    public static void zoom(WebElement element, boolean zoomIn) {
+        Allure.step(zoomIn ? "Zoom in" : "Zoom out", () -> {
+            int x = element.getLocation().getX() + element.getSize().getWidth() / 2;
+            int y = element.getLocation().getY() + element.getSize().getHeight() / 2;
+            int from = zoomIn ? ZOOM_MIN_GAP : ZOOM_MAX_GAP;
+            int to = zoomIn ? ZOOM_MAX_GAP : ZOOM_MIN_GAP;
+
+            new MultiTouchAction((PerformsTouchActions) _driver)
+                    .add(finger(x, y - from, x, y - to, SWIPE_MS))
+                    .add(finger(x, y + from, x, y + to, SWIPE_MS))
+                    .perform();
+        });
+    }
+    // Press at the start point, hold for durationMs, drag to the end point and release.
+    public static void swipe(int startX, int startY, int endX, int endY, int durationMs) {
+        finger(startX, startY, endX, endY, durationMs).perform();
+    }
+
+    private static TouchAction<?> finger(int startX, int startY, int endX, int endY, int durationMs) {
+        return new TouchAction<>((PerformsTouchActions) _driver)
+                .press(PointOption.point(startX, startY))
+                .waitAction(WaitOptions.waitOptions(Duration.ofMillis(durationMs)))
+                .moveTo(PointOption.point(endX, endY))
+                .release();
     }
 }
