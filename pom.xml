@@ -74,7 +74,7 @@
           <testFailureIgnore>true</testFailureIgnore>
           <suiteXmlFiles>${suiteXmlFiles}</suiteXmlFiles>
           <systemPropertyVariables>
-            <browser>${env}</browser>
+            <Denv>${env}</Denv>
           </systemPropertyVariables>
         </configuration>
       </plugin>
