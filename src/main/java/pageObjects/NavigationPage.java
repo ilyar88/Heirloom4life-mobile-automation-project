@@ -1,8 +1,7 @@
 package pageObjects;
 
 import io.appium.java_client.MobileBy;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 
 public class NavigationPage {
 
@@ -11,7 +10,6 @@ public class NavigationPage {
 	public NavigationPage(WebDriver driver) {
 		_driver = driver;
     }
-
     // Bottom navigation bar options: "Stories" "Media", "Shared", "Account"
     public WebElement navigationBar(String value) {
         return _driver.findElement(MobileBy.AndroidUIAutomator("new UiSelector().text(\"" + value + "\")"));
