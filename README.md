@@ -14,7 +14,8 @@ Heirloom4Life is a mobile app for preserving personal stories (AI voice preserva
 MyFinancialPlan-project/
 ├── src/main/java/
 │   ├── base/
-│   │   └── BasePage.java            # Driver lifecycle: loads config, creates the driver (android/ios/chrome/firefox/edge), scopes Android locators under CONTENT_ROOT & teardown
+│   │   ├── BasePage.java            # Test base: loads config, sets up/tears down the driver, takes failure screenshots
+│   │   └── DriverFactory.java       # Creates the driver (android/ios/chrome/firefox/edge); scopes Android locators under CONTENT_ROOT and labels each lookup for Allure (calling page-object method + argument, masked if secret)
 │   ├── com/heirloom4life/
 │   │   └── SanityTest.java          # Main sanity E2E suite
 │   ├── configuration/
@@ -23,13 +24,12 @@ MyFinancialPlan-project/
 │   │   ├── WebActions.java          # UI interactions (click, type, select, upload, etc.)
 │   │   ├── MobileActions.java       # Mobile gestures (adb-based scroll down)
 │   │   └── Verifications.java       # Assertion helpers with Allure steps
-│   ├── pageObjects/                 # Page Object Model (POM): Login, Navigation, Stories, Account
+│   ├── pageObjects/                 # Page Object Model (POM): Login, Navigation, Stories, Media, Memoir, Notification, Account
 │   ├── workflows/                   # Multi-step user flows (login, sign out)
 │   ├── scripts/
 │   │   └── summarize-test.sh        # Parses the Surefire XML report and prints pass/fail/skip counts in CI
 │   └── utilities/                   # Wait conditions, data providers & failure listener
 │       ├── WaitForElement.java      # Wait conditions & synchronization
-│       ├── Listeners.java           # Screenshot on failure & test lifecycle logging
 │       ├── DataUtil.java            # JSON test-data parser & .env placeholder resolver
 │       └── TestData.java            # TestNG @DataProvider backed by testData.json
 ├── src/test/resources/
@@ -58,7 +58,7 @@ MyFinancialPlan-project/
 | **Page Objects** | Encapsulate UI element locators per screen |
 | **Extensions** | Reusable utilities: UI/mobile actions and Allure-backed verifications |
 | **Utilities** | Wait conditions, JSON-driven data provider, failure listener |
-| **Base** | `BasePage` loads config, launches/tears down the driver (Android/iOS/Chrome/Firefox/Edge) and takes failure screenshots |
+| **Base** | `BasePage` loads config, sets up/tears down the driver and takes failure screenshots; `DriverFactory` creates the driver (Android/iOS/Chrome/Firefox/Edge) |
 
 ## Project Overview
 
@@ -109,11 +109,11 @@ Test data is driven from `src/test/resources/testData.json`, parsed by `DataUtil
 ## Reporting
 
 ### Allure report
-- Every UI action is logged as an **Allure step**
+- Every UI action is logged as an **Allure step**, named after the page-object function that was called (and its argument, if it has one) instead of the raw element locator, e.g. `Click on chooseAccount(ilya@heirloom4life.com)` or `Click on googleLink()`
+- A click that immediately repeats on the same target (e.g. a confirmation dialog's button sharing its parent's name) is reported once, not twice
+- **Secret values** — anything from the local `.env` file or an OS environment variable (login email, etc.) — are masked with asterisks everywhere they'd otherwise show: step text and test parameters alike
 - Tests are tagged with **Allure severity** and **description**
-- **Screenshots** are automatically captured and attached on failure (via `Listeners`)
-
----
+- **Screenshots** are automatically captured and attached on failure (taken by `SanityTest` after a failed test)
 
 ## CI/CD - GitHub Actions
 
