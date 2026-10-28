@@ -109,7 +109,7 @@ Test data is driven from `src/test/resources/testData.json`, parsed by `DataUtil
 ## Reporting
 
 ### Allure report
-- Every UI action is logged as an **Allure step**, named after the page-object function that was called (and its argument, if it has one) instead of the raw element locator, e.g. `Click on chooseAccount(ilya@heirloom4life.com)` or `Click on googleLink()`
+- Every UI action is logged as an **Allure step**, named after the page-object function that was called (and its argument, if it has one) instead of the raw element locator, e.g. `Click on chooseAccount()` or `Click on googleLink()`
 - A click that immediately repeats on the same target (e.g. a confirmation dialog's button sharing its parent's name) is reported once, not twice
 - **Secret values** — anything from the local `.env` file or an OS environment variable (login email, etc.) — are masked with asterisks everywhere they'd otherwise show: step text and test parameters alike
 - Tests are tagged with **Allure severity** and **description**
